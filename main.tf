@@ -1,35 +1,32 @@
 provider "aws" {
     region= "us-east-1"
-
 }
 
-variable "subnet-cidr-block"{
-    description= "CIDR block for aws"
-    default = "10.0.30.0/16"
-    type = string
-}
-resource "aws_vpc" "development-vpc" {
-  cidr_block = "10.0.0.0/16"
+
+resource "aws_vpc" "myapp-vpc" {
+  cidr_block = var.vpc_cidr_block
   tags = {
-      Name = "developer-vpc-tag"
+      Name = "${var.env_prefix}-vpc"
   }
 }
 
-resource "aws_subnet" "development-subnet-1" {
-  vpc_id     = aws_vpc.development-vpc.id
-  cidr_block = var.subnet-cidr-block
-  availability_zone= "us-east-1a"
 
-  tags = {
-    Name = "development-subnet-1-tag"
-  }
+module "myapp_subnet" {
+  source = "./modules/subnet"
+  subnet_cidr_block = var.subnet_cidr_block
+  vpc_id = aws_vpc.myapp-vpc.id
+  availability-zones = var.availability-zones
+  default_route_table_id = aws_vpc.myapp-vpc.default_route_table_id
+  env_prefix = var.env_prefix
 }
 
-output "development-vpc-id" {
-    value = aws_vpc.development-vpc.id
-}
-
-
-output "development-subnet-1-id" {
-    value = aws_subnet.development-subnet-1.id
+module "myapp_server" {
+  source = "./modules/webserver"
+  vpc_id = aws_vpc.myapp-vpc.id
+  availability-zones = var.availability-zones
+  env_prefix = var.env_prefix
+  my_ip = var.my_ip
+  img_name = var.img_name
+  subnet_id = module.myapp_subnet.subnet-1.id
+  instance_type = var.instance_type
 }
