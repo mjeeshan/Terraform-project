@@ -5,3 +5,5 @@
 *.tfstate.*
 # variables file
 *.tfvars
+.DS_Store
+crash.log
