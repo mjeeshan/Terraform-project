@@ -2,31 +2,33 @@ provider "aws" {
     region= "us-east-1"
 }
 
+module "vpc" {
+  source = "terraform-aws-modules/vpc/aws"
 
-resource "aws_vpc" "myapp-vpc" {
-  cidr_block = var.vpc_cidr_block
-  tags = {
-      Name = "${var.env_prefix}-vpc"
+  name = "myapp-vpc"
+  cidr = var.vpc_cidr_block
+
+  azs             = [var.availability-zones]
+  public_subnets  = [var.subnet_cidr_block]
+
+  enable_nat_gateway = true
+  enable_vpn_gateway = true
+  public_subnet_tags = {
+     Name = "${var.env_prefix}-subnet-1"
   }
-}
-
-
-module "myapp_subnet" {
-  source = "./modules/subnet"
-  subnet_cidr_block = var.subnet_cidr_block
-  vpc_id = aws_vpc.myapp-vpc.id
-  availability-zones = var.availability-zones
-  default_route_table_id = aws_vpc.myapp-vpc.default_route_table_id
-  env_prefix = var.env_prefix
+  tags = {
+    Terraform = "true"
+    Name = "${var.env_prefix}-vpc"
+  }
 }
 
 module "myapp_server" {
   source = "./modules/webserver"
-  vpc_id = aws_vpc.myapp-vpc.id
+  vpc_id = module.vpc.vpc_id
   availability-zones = var.availability-zones
   env_prefix = var.env_prefix
   my_ip = var.my_ip
   img_name = var.img_name
-  subnet_id = module.myapp_subnet.subnet-1.id
+  subnet_id = module.vpc.public_subnets[0]
   instance_type = var.instance_type
 }

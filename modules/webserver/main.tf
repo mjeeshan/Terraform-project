@@ -1,6 +1,6 @@
-resource "aws_default_security_group" "default-sg" {
+resource "aws_security_group" "default-sg" {
   vpc_id      = var.vpc_id
-
+  name = "default-sg"
   ingress {
     description      = "For SSH"
     from_port        = 22
@@ -10,7 +10,23 @@ resource "aws_default_security_group" "default-sg" {
   }
 
   ingress {
-    description      = "For outside access"
+    description      = "For Director service"
+    from_port        = 1234
+    to_port          = 1234
+    protocol         = "tcp"
+    cidr_blocks      = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    description      = "For API Service"
+    from_port        = 4000
+    to_port          = 4000
+    protocol         = "tcp"
+    cidr_blocks      = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    description      = "For Dashboard Service"
     from_port        = 8080
     to_port          = 8080
     protocol         = "tcp"
@@ -48,18 +64,12 @@ data  "aws_ami" "lastest-amazon-linux" {
 resource "aws_instance" "myapp-server" {
   ami           = data.aws_ami.lastest-amazon-linux.id
   instance_type = var.instance_type
-  vpc_security_group_ids = [aws_default_security_group.default-sg.id]
+  vpc_security_group_ids = [aws_security_group.default-sg.id]
   subnet_id   = var.subnet_id
   availability_zone= var.availability-zones
   associate_public_ip_address=true
   key_name = "terraform-aws"
-  user_data = <<EOF
-                    #!/bin/bash
-                    sudo yum update -y && sudo yum install -y docker
-                    sudo systemctl start docker
-                    sudo usermod -aG docker ec2-user
-                    docker run -p 8080:8080 nginx
-                EOF
+  user_data = file("entrypoint.sh")
 
   tags = {
     Name = "${var.env_prefix}-server"
